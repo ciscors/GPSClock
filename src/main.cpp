@@ -3,12 +3,12 @@
    Arduino Nano or Pro mini 5V 168
 */
 
-//#include <Timezone.h>
+
 #include <SoftwareSerial.h>
 #include <TinyGPSPlus.h>
 #include <Timezone.h>
-
 #include <LiquidCrystal.h>
+
 const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
@@ -32,7 +32,7 @@ Timezone UkraineTime(EEST, EET);
 
 // time variables
 time_t local, utc, prev_set;
-int timesetinterval = 60; //set microcontroller time every 60 seconds
+unsigned  timesetinterval = 60; //set microcontroller time every 60 seconds
 
 
 static void smartDelay(unsigned long ms);
