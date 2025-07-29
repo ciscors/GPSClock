@@ -8,8 +8,19 @@
 #include <TinyGPSPlus.h>
 #include <Timezone.h>
 #include <LiquidCrystal.h>
+#include "OneButton.h"
 
-const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
+
+
+#define BTN1 10
+#define BTN2 12
+#define BTN3 13
+
+
+OneButton button1(BTN1, true);
+
+
+const int rs = 7, en = 6, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
 
@@ -38,11 +49,26 @@ unsigned  timesetinterval = 60; //set microcontroller time every 60 seconds
 static void smartDelay(unsigned long ms);
 void displaythetime(void);
 void setthetime(void);
+void displayLocation(void);
+
+uint8_t showMode=0;
+
+void singleClkButtonBtn1() { 
+ 
+  showMode = showMode ==0 ? 1 :0 ;
+  //Serial.println("Btn1 click");
+
+
+}
 
 void setup() {
   lcd.begin(16, 2);  // initialize the lcd for 16 chars 2 lines, turn on backlight
   lcd.clear();
   //lcd.backlight();
+  button1.attachClick(singleClkButtonBtn1);
+
+  Serial.begin(115200);
+  Serial.println("GPS Clock v0.1");
 
   lcd.setCursor(0, 0); //Start at character 0 on line 0
   lcd.print("Waiting for");
@@ -56,10 +82,44 @@ void setup() {
   }
   setthetime();
   prev_set = now();
+
+  
 }
+
+unsigned long lastSync=0;
+unsigned long syncInterval = 20000;
+unsigned long lastShow=0;
+unsigned long showInterval = 1000;
 
 void loop()
 {
+
+ 
+  button1.tick();
+  smartDelay(20);
+  /*while(GPS_serial.available()) {
+    gps.encode(GPS_serial.read());
+  }
+  */
+  if(gps.time.isUpdated()){
+    if(millis()-lastSync > syncInterval) {
+      lastSync=millis();
+      Serial.println("sync GPS time");
+      setthetime();
+     // displaythetime();
+
+    }
+  }
+  if(millis()-lastShow>showInterval) {
+  if(showMode==0) {
+    displaythetime();
+  } else { 
+    displayLocation();
+  }
+
+  lastShow=millis();
+} 
+ /*
   if (now() - prev_set > timesetinterval && gps.time.isValid())  // set the microcontroller time every interval, only if there is a valid GPS time
   {
     setthetime();
@@ -67,24 +127,26 @@ void loop()
     lcd.clear();
     lcd.setCursor(0, 0); //Start at character 0 on line 0
     lcd.print("time is set");
-    smartDelay(1000);
+    //smartDelay(1000);
   }
   displaythetime();
-  smartDelay(1000);     // update the time every second
-}
+  //smartDelay(1000);     // update the time every second
+
+*/ 
+  
+  }
 
 static void smartDelay(unsigned long ms)
 {
   unsigned long start = millis();
-  do
+
+  while(millis() - start < ms && GPS_serial.available())
   {
-    // If data has come in from the GPS module
-    while (GPS_serial.available())
       gps.encode(GPS_serial.read()); // Send it to the encode function
     // tinyGPS.encode(char) continues to "load" the tinGPS object with new
     // data coming in from the GPS module. As full NMEA strings begin to come in
     // the tinyGPS library will be able to start parsing them for pertinent info
-  } while (millis() - start < ms);
+  }
 }
 
 void setthetime(void)
@@ -98,6 +160,29 @@ void setthetime(void)
   // Set Time from GPS data string
   setTime(Hour, Minute, Second, Day, Month, Year);  // set the time of the microcontroller to the UTC time from the GPS
 }
+
+
+
+void displayLocation(void)
+{
+  
+  lcd.clear();
+  lcd.setCursor(0, 0); //Start at character 0 on line 0
+  lcd.print("S:");
+  lcd.setCursor(2, 0);
+  lcd.print(gps.satellites.value());  // display the number of satellites
+ // Serial.println(gps.satellites.value());
+  lcd.setCursor(4, 0); //Start at character 0 on line 1
+  lcd.print("LAT:");
+  lcd.setCursor(8, 0);
+  lcd.print(gps.location.lat());
+  lcd.setCursor(4, 1); //Start at character 0 on line 0
+  
+  lcd.print("LNG:");
+  lcd.setCursor(8, 1);
+  lcd.print(gps.location.lng());
+}
+
 void displaythetime(void)
 {
   utc = now();  // read the time in the correct format to change via the TimeChangeRules
@@ -107,6 +192,7 @@ void displaythetime(void)
   lcd.print("S:");
   lcd.setCursor(2, 0);
   lcd.print(gps.satellites.value());  // display the number of satellites
+ // Serial.println(gps.satellites.value());
   lcd.setCursor(4, 0); //Start at character 0 on line 1
   lcd.print("UTC:");
   lcd.setCursor(8, 0);
